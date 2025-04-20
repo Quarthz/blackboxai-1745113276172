@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Traffic Volume Count Survey</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
+  <header class="mb-8 text-center">
+    <h1 class="text-4xl font-bold text-gray-800 mb-2">Traffic Volume Count Survey</h1>
+    <p class="text-gray-600">Upload CCTV files to analyze traffic volume</p>
+  </header>
+
+  <main class="w-full max-w-3xl bg-white rounded-lg shadow p-6">
+    <form id="uploadForm" action="http://localhost:3000/upload" method="POST" enctype="multipart/form-data">
+      <section>
+        <label for="file-upload" class="block mb-4 text-lg font-semibold text-gray-700 cursor-pointer">
+          <i class="fas fa-upload mr-2 text-blue-600"></i>Upload CCTV Files
+        </label>
+        <input
+          id="file-upload"
+          type="file"
+          multiple
+          accept=".mp4,.asf,.flv"
+          name="videoFiles"
+          class="hidden"
+          required
+        />
+        <div
+          id="drop-zone"
+          class="border-4 border-dashed border-blue-300 rounded-lg p-12 text-center text-blue-500 cursor-pointer transition-colors hover:border-blue-500 hover:text-blue-600"
+        >
+          Drag & Drop files here or click to select
+        </div>
+      </section>
+
+      <section class="mt-6 text-center">
+        <button
+          type="submit"
+          class="bg-blue-600 text-white py-2 px-6 rounded hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 mx-auto"
+        >
+          <i class="fas fa-upload"></i> Upload
+        </button>
+      </section>
+
+      <section class="mt-8">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Selected Files</h2>
+        <ul id="file-list" class="space-y-3 text-gray-700"></ul>
+      </section>
+    </form>
+  </main>
+
+  <script>
+    const fileUpload = document.getElementById('file-upload');
+    const dropZone = document.getElementById('drop-zone');
+    const fileList = document.getElementById('file-list');
+    const uploadForm = document.getElementById('uploadForm');
+
+    let selectedFiles = [];
+
+    function updateFileList() {
+      fileList.innerHTML = '';
+      selectedFiles.forEach(file => {
+        const li = document.createElement('li');
+        li.className = 'flex items-center space-x-4 p-3 bg-gray-50 rounded shadow-sm';
+
+        const icon = document.createElement('i');
+        if (file.type.startsWith('video/')) {
+          icon.className = 'fas fa-video text-blue-500 text-xl';
+        } else {
+          icon.className = 'fas fa-file text-gray-500 text-xl';
+        }
+
+        const name = document.createElement('span');
+        name.textContent = file.name;
+
+        li.appendChild(icon);
+        li.appendChild(name);
+        fileList.appendChild(li);
+      });
+    }
+
+    function validateFiles(files) {
+      const allowedExtensions = ['mp4', 'asf', 'flv'];
+      for (const file of files) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!allowedExtensions.includes(ext)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function addFiles(files) {
+      if (!validateFiles(files)) {
+        alert('Invalid file type detected. Only .mp4, .asf, and .flv files are allowed.');
+        return;
+      }
+      selectedFiles = [...selectedFiles, ...Array.from(files)];
+      updateFileList();
+    }
+
+    dropZone.addEventListener('click', () => fileUpload.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-blue-500', 'text-blue-600');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-blue-500', 'text-blue-600');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-blue-500', 'text-blue-600');
+      if (e.dataTransfer.files.length) {
+        addFiles(e.dataTransfer.files);
+      }
+    });
+
+    fileUpload.addEventListener('change', () => {
+      if (fileUpload.files.length) {
+        addFiles(fileUpload.files);
+      }
+    });
+
+    uploadForm.addEventListener('submit', (e) => {
+      if (selectedFiles.length === 0) {
+        e.preventDefault();
+        alert('Please select at least one file to upload.');
+        return;
+      }
+      // Create a new FormData object and append selected files
+      const formData = new FormData();
+      selectedFiles.forEach(file => {
+        formData.append('videoFiles', file);
+      });
+
+      // Use fetch to submit the form data to the backend
+      e.preventDefault();
+      fetch(uploadForm.action, {
+        method: 'POST',
+        body: formData,
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert(data.message || 'Upload successful!');
+        selectedFiles = [];
+        updateFileList();
+        fileUpload.value = '';
+      })
+      .catch(error => {
+        alert('Upload failed. Please try again.');
+        console.error('Upload error:', error);
+      });
+    });
+  </script>
+</body>
+</html>
